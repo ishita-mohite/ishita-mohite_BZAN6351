@@ -1,0 +1,105 @@
+---
+title: "Student Data Analysis"
+output: html_document
+date: "2025-11-10"
+---
+
+---
+Data Pre-processing
+---
+
+```{r setup}
+students <- read.csv("student-mat.csv", sep = ";", header = TRUE)
+```
+
+```{r}
+students
+```
+
+```{r}
+students_clean <- na.omit(students)
+students_clean
+```
+```{r}
+categorical_cols <- c("school", "sex", "address", "famsize", "Pstatus", "Mjob", "Fjob", "reason", "guardian", 
+                     "schoolsup", "famsup", "paid", "activities", "nursery", "higher", "internet", "romantic")
+students_clean[categorical_cols] <- lapply(students_clean[categorical_cols], as.factor)
+categorical_cols
+```
+```{r}
+students_clean$G1 <- as.numeric(students_clean$G1)
+students_clean$G2 <- as.numeric(students_clean$G2)
+students_clean$G3 <- as.numeric(students_clean$G3)
+```
+
+```{r}
+students_clean$pass <- as.factor(ifelse(students_clean$G3 >= 10, "yes", "no"))
+```
+
+```{r}
+students_clean <- students_clean[!duplicated(students_clean), ]
+```
+
+```{r}
+head(students_clean)
+summary(students_clean)
+str(students_clean)
+```
+```{r}
+library(rpart)
+library(rpart.plot)
+library(caret)
+# Load cleaned data (see prior steps)
+students <- read.csv("student-mat-cleaned.csv")
+students
+```
+```{r}
+str(students$pass)
+```
+```{r}
+set.seed(123)
+train_idx <- createDataPartition(students$pass, p = 0.8, list = FALSE)
+train_data <- students[train_idx, ]
+test_data  <- students[-train_idx, ]
+```
+
+```{r}
+tree_model <- rpart(pass ~ ., data = train_data, method = "class")
+tree_model
+```
+```{r}
+rpart.plot(tree_model, extra = 104, type = 3)
+rpart.plot
+```
+```{r}
+preds <- predict(tree_model, test_data, type = "class")
+preds
+```
+```{r}
+printcp(tree_model)  # View complexity parameter table
+best_cp <- tree_model$cptable[which.min(tree_model$cptable[, "xerror"]), "CP"]
+pruned_tree <- prune(tree_model, cp = best_cp)
+rpart.plot(pruned_tree, extra = 104, type = 3)
+```
+```{r}
+preds <- predict(tree_model, test_data, type = "class")
+preds
+```
+---
+data exploration
+---
+
+```{r}
+summary(students)
+hist(students$G3, main="Final Grade Distribution", xlab="G3")
+boxplot(G3 ~ sex, data=students, main="Final Grade by Gender")
+```
+```{r}
+num_data <- students[sapply(students, is.numeric)]
+cor_matrix <- cor(num_data)
+round(cor_matrix, 2)
+```
+```{r}
+library(ggplot2)
+ggplot(students, aes(x=G2, y=G3)) + geom_point(alpha=0.5) + geom_smooth(method="lm")
+```
